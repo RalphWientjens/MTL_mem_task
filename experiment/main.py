@@ -3,24 +3,28 @@ Created on Sun Jan 4th 12:00:00 2026
 
 @author: Ralph Wientjens
 
-Main script to run the Episodic Extinction experiment.
+Main script to run the MTL_mem experiment.
 """
+import psychopy.plugins
+psychopy.plugins.activatePlugins()
 
 import sys
 import os
-from session import ExtinctionSession
+from session import MemorySession
 from datetime import datetime
-datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
 def main():
     subject = sys.argv[1]
-    sess =  sys.argv[2]
-    version = sys.argv[3]
+    run =  sys.argv[2]
     # eyetracker_on = bool(sys.argv[4])
     
-    output_str= "sub-" + subject+'_ses-'+sess+"_v-"+version
+    output_str= "sub-" + subject+'_run-'+run
     
     output_dir = f'./logs/sub-{subject}/{output_str}'
+
+    if len(sys.argv) < 3:
+        print("Usage: python main.py <subject> <run>")
+        sys.exit(1)
     
     if os.path.exists(output_dir):
         print("Warning: output directory already exists. Renaming to avoid overwriting.")
@@ -28,12 +32,10 @@ def main():
     
     settings_file='./expsettings.yml'
 
-    ts = ExtinctionSession(
+    ts = MemorySession(
         output_str=output_str, 
         output_dir=output_dir, 
         settings_file=settings_file,
-        sess=int(sess),
-        version=version
         )
     ts.run()
 
