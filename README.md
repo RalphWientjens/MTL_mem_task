@@ -1,138 +1,143 @@
-# Episodic Extinction (EE) Experiment
+# MTL Memory Localizer Experiment
 
-PsychoPy / exptools2 experiment code for an **Episodic Extinction** paradigm. The task presents sequences (“episodes”) consisting of visual scenes and sounds, interleaved with rating phases (distress and story coherence). The experiment is intended to be run across **multiple sessions (day 1–3)** with different trial structures per session.
+PsychoPy / exptools2 experiment code for a **Medial Temporal Lobe (MTL) localizer** task. This is a simple memory cue paradigm designed to activate the hippocampus and surrounding MTL regions during fMRI scanning.
 
-### The three sessions each serve their own purpose:
-**Session 1: Episodic fear conditioning:** Participants learn 40 unique episodes across 3 blocks, each episode consisting of multiple stimuli (a context (background) image; a neutral image as the narrative stimulus (NS); a neutral image as the conditioned stimulus (CS) and a neutral **or** aversive image-sound combination as the outcome stimulus (OS)). The instructions for participants are to imagine a vivid story while incorporating all the stimuli into one coherent story. During the CS presentation, participants have to indicate how distressed they feel on a visual analogue scale from 0-100. At the end of each episode during the last block, participant have to indicate how coherent their story for that episode was.
+## Experiment Overview
 
-**Session 2: Episodic extinction while manipulating context:** The episodes from the first session are shown again, this time while the OS is either omitted (Extinction) or still presented (Continued conditioning). For half of the episodes in each condition, the episodes are either presented in the same context, or in a new context, in comparison to the first session. All episodes are repeated over four blocks. During each CS presentation, participants have to indicate how distressed they feel. The NS is not presented in the second session. 8 of the 40 epiodes are not presented to use as a baseline control for analysis.
+The task presents **memory cues** (words) that participants must actively think about and mentally retrieve memories associated with those words. Between cues, a rotating fixation cross provides timing structure. The experiment begins and ends with still fixation cross baseline periods for localizer purposes.
 
-**Session 3: Reinforced test:** Each CS is presented once more, this time with no NS **and** no context image. The CS is subsequently reinforced with the OS in the same schedule as in session 2, where the OS is omitted for Extinction episodes, but shown for Continued conditioning episodes and control episodes. During each CS presentation, participants indicate how distressed they feel
+### Trial Structure
 
-> **Sidenote (stimulus files):** the repository expects a stimulus folder structure on disk (images + sounds). If you don’t have the stimulus set, **ask the repository owner** for the stimulus files before attempting to run the experiment.
+Each memory trial consists of two phases:
+1. **Remember (12s):** A word cue is displayed. Participants imagine and retrieve memories associated with the word.
+2. **Fixation (8–12s, jittered):** A rotating fixation cross is shown while a reminder beep sounds at onset.
 
----
+### Edge Trials (Baseline)
 
-## What the experiment entails
+- **Start of experiment:** 16s still fixation cross (baseline).
+- **End of experiment:** 16s still fixation cross (baseline).
 
-At a high level, trials are built from multiple **phases** (e.g., context → NS → context → CS → distress rating → US → …). Phase timing and the actual structure depend on the **session/day** and the **condition**.
-
-### Common phase types
-
-- **context**: background scene (full-screen image).
-- **NS**: narrative stimulus overlay (image).
-- **CS / CS_only**: conditioned stimulus image (with or without context, depending on session).
-- **US / US_only**: unconditioned stimulus image (with optional associated sound).
-- **CS_distress / CS_distress_only**: distress rating phase using a slider.
-- **coherence**: coherence rating phase using a slider.
-- **fixcross / fixcross_long**: fixation cross between trials/blocks (short vs long duration; both draw the same fixation, but have different timing rules).
-
-Session-specific trial structures are defined in `SESSION_CONFIG` and per-phase durations are defined in `PHASES` (see `session.py`).
+These edge trials are used for localizer contrast purposes.
 
 ---
 
-## Repository structure
+## Repository Structure
 
 ### `main.py`
-Entry point that parses command-line arguments and starts the session.
+Entry point that initializes and runs the session.
 
-- Expects arguments:  
-  1) `subject`  
-  2) `sess` (session/day number)  
-  3) `version` (stimset version string used to load the correct `.tsv`)
+- Expects arguments:
+  1. `subject` – participant ID
+  2. `run` – run number
 
-It creates the output directory and instantiates `ExtinctionSession`, then calls `ts.run()`.
+- Creates output directory structure: `logs/sub-{subject}/sub-{subject}_run-{run}/`
+- Instantiates `MemorySession` and calls `ts.run()`
 
 ### `session.py`
-Defines the session logic and trial generation.
+Defines session logic and trial generation.
 
 Key contents:
-- `PHASES`: mapping from phase keys to `(draw_name, duration)`.  
-  Example:  
-  - `fixcross_long` maps to draw name `"fixcross"` with a longer random duration.
-- `SESSION_CONFIG`: per-session phase-sequence templates (e.g., session 1 base trial structure).
-- `resolve_condition_label(sess, condition)`: maps numerical condition values to labels used in `SESSION_CONFIG`.
-- `pseudorandomize_stimset(...)`: shuffles a stimset while respecting constraints (no long repeats of condition/valence).
-- `ExtinctionSession`:
-  - loads **instructions** from `instructions.yml`
-  - loads **practice stimset** and **main stimset** (`.tsv`)
-  - builds practice trials and block-based main trials
-  - shows instruction screens and runs trials
+- `MemorySession`: main session class (inherits from `PylinkEyetrackerSession`)
+  - Loads memory cues from `cues.tsv`
+  - Creates memory trials organized by block
+  - Manages edge trials (baseline fixation periods)
+  - Handles eyetracker calibration and MRI scanner sync
+- `create_mem_trials()`: generates randomized trials across blocks
+- `create_edge_trials()`: generates baseline fixation trials at start/end
 
 ### `trial.py`
-Defines the actual trial rendering and response collection.
+Implements trial rendering and phase execution.
 
-Key responsibilities:
-- Preloads stimuli (images + sounds) based on the row in the stimset.
-- Implements:
-  - `on_phase_start(...)`: resets sliders, plays US sound, etc.
-  - `draw()`: draws the correct stimuli for the current phase
-  - `on_phase_end()`: logs distress/coherence ratings
-  - `run()`: iterates through the phase list and controls execution
-
-> Note: phase timing depends on the timer logic in `run()`; ensure the phase timing mechanism matches PsychoPy/exptools2 expectations in your environment.
-
-### `instructions.yml`
-Text shown to participants. Organized by session:
-- `session_1`, `session_2`, `session_3`
-- keys like:
-  - `before_session`
-  - `practice_start` / `practice_end` (session 1)
-  - `between_blocks`
-
-Formatting uses YAML block scalars (`|`) to preserve line breaks. Placeholders like `{block}` are used for formatting between-block messages.
+Key classes:
+- `MemoryTrial(Trial)`: a single memory trial with two phases
+  - **Stimuli:**
+    - Still fixation cross (baseline phases)
+    - Text cue (remember phase)
+    - Rotating fixation cross with beep (fixation phase)
+  - **Methods:**
+    - `on_phase_start()`: initializes phase-specific content
+    - `draw()`: renders appropriate stimulus for current phase
+    - `run()`: executes trial with frame-by-frame rendering and parallel port markers
 
 ### `expsettings.yml`
-Experiment settings (window, monitor, preferences, etc.), loaded by exptools2.
+Experiment configuration (window, monitor, test settings).
 
 Notable fields:
 - `window.size`, `window.fullscr`, `window.waitBlanking`
 - `monitor.distance`, `monitor.width`
+- `test_settings.eyetracker_on`, `test_settings.mri_on`, `test_settings.parallel_markers_on`
+- `test_settings.test_mode_on` (for fast testing with reduced durations)
 
-### Stimsets (`Stimsets/`)
-The code expects stimsets at:
+### `cues.tsv`
+Stimulus file containing memory cues (words).
 
-- `Stimsets/version{version}_day{sess}.tsv`
+**Required columns:**
+- `cue` – the word/phrase to display
+- `reminder_sound` – path to beep sound file (relative to `sounds/` directory)
 
-Example: if `version=1` and `sess=2`, it will look for:
-- `Stimsets/version1_day2.tsv`
+**Example format:**
+```
+cue	reminder_sound
+apple	beep.wav
+bicycle	beep.wav
+mountain	beep.wav
+```
 
-There is also a practice stimset expected at:
-- `Practice_stimsets/day1_practice_stimset.tsv`
-
-### Notebooks (e.g., `randomisation_EE.ipynb`)
-Used to generate and/or validate stimsets and randomization logic. Not required for running the experiment, but useful for creating `Stimsets/*.tsv`.
-
----
-
-## Stimulus files (required)
-
-The experiment expects a stimulus directory called:
-
-- `stimulus_files/` (relative to `trial.py`)
-
-With subfolders such as (based on `trial.py`):
-- `contexts_equalized/`
-- `NS_equalized/`
-- `CS_equalized/`
-- `US_equalized/`
-- `USsounds/`
-
-Filenames are taken directly from the stimset `.tsv`, so they must match exactly.
-
-If those folders/files are missing, the experiment will not run correctly. **Ask the owner for the stimulus set**.
+### `sounds/`
+Directory containing audio files (e.g., `beep.wav`) referenced in `cues.tsv`.
 
 ---
 
-## How to run
+## How to Run
 
 ### 1) Create/activate a Python environment
+
 This project depends on PsychoPy + exptools2 + standard scientific Python packages.
 
-You can use the `exptools2_environment.yml` to install the environment I use or go to https://github.com/VU-Cog-Sci/exptools2 to see further instructions on how to install the environment
+You can use the `exptools2_environment.yml` to install dependencies, or visit https://github.com/VU-Cog-Sci/exptools2 for detailed installation instructions.
 
 ### 2) Run from the experiment folder
+
 In the terminal, `cd` into the directory containing `main.py`, then run:
 
-````bash
-python main.py <subject> <sess> <version>
+```bash
+python main.py <subject> <run>
+```
+
+**Example:**
+```bash
+python main.py 001 1
+```
+
+This will:
+- Run the experiment for subject 001, run 1
+- Create output in `logs/sub-001/sub-001_run-1/`
+- Save logs, eyetracking data (if enabled), and behavioral data
+
+### 3) Configuration
+
+Before running, ensure:
+- `cues.tsv` is in the experiment directory with your word cues
+- `sounds/beep.wav` exists in a `sounds/` subdirectory
+- `expsettings.yml` is configured appropriately (fullscreen, MRI sync, eyetracker settings, etc.)
+
+---
+
+## Features
+
+- **Block-based randomization:** Trials are randomized independently per block
+- **Eyetracking integration:** Optional EyeLink eyetracker support with automatic EDF→HDF5 conversion
+- **MRI/fMRI compatible:** Scanner sync support (wait for 't' pulse), parallel port markers for timing precision
+- **Test mode:** Fast testing with 10% duration scaling (set `test_mode_on: true` in `expsettings.yml`)
+- **Rotating fixation cross:** Dynamic visual feedback during ITI (2°/frame rotation)
+
+---
+
+## Output
+
+The experiment generates:
+- **Behavioral log:** `{output_str}_behavioral.tsv` – trial-by-trial data (cues, timings, responses)
+- **Trial log:** `{output_str}_trial.log` – detailed frame-by-frame event log
+- **Eyetracking data** (if enabled):
+  - `{output_str}.edf` (raw EyeLink file)
+  - `{output_str}.hdf5` (converted HDF5 format)
