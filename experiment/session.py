@@ -170,17 +170,26 @@ class MemorySession(PylinkEyetrackerSession):
             # Start recording
             self.start_recording_eyetracker()
 
-        if self.settings["mri"]["simulate"]:
+        # if self.settings["mri"]["simulate"]:
+        #     self.show_text_screen(
+        #         text="Waiting for scanner...",
+        #         wait_keys=None   # just flash the screen, wait_for_sync() does the actual waiting
+        #     )
+        #     self.wait_for_sync()
+        # else:
+        #     self.show_text_screen(
+        #         text="Waiting for scanner...",
+        #         wait_keys=['t']
+        #     )
+        
+        if self.mri_on:
+            # In MRI sessions, instructions are given outside the scanner, so we skip directly to waiting for the scanner.
             self.show_text_screen(
                 text="Waiting for scanner...",
-                wait_keys=None   # just flash the screen, wait_for_sync() does the actual waiting
+                wait_keys=None,
+                duration=0.1  # just flash the screen, don't wait for keypress
             )
-            self.wait_for_sync()
-        else:
-            self.show_text_screen(
-                text="Waiting for scanner...",
-                wait_keys=['t']
-            )
+            self.wait_for_sync()  # this does the actual waiting for the trigger
 
         # start_experiment() sets session clock t=0 and logs experiment start
         self.start_experiment()
