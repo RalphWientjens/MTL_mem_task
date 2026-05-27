@@ -26,7 +26,7 @@ monitor:
 operating system: 'mac' # specify the OS the code is run on as 'mac', 'linux', or 'windows'
 
 test_settings:
-    test_mode_on: True
+    test_mode_on: False
     eyetracker_on: False
     serial_markers_on: False
     parallel_markers_on: False

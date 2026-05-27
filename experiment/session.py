@@ -85,10 +85,27 @@ class MemorySession(PylinkEyetrackerSession):
 
         self.stimset = pd.read_csv(stimset_path, sep="\t")
         self.n_trials = len(self.stimset)
+        self.TR = self.settings["mri"]["TR"] if self.mri_on else None
+    
+    def jittered_iti(self, fixed_duration, min_iti=2, max_iti=8, TR: float=1.6):
+        """Return an ITI that brings total trial duration to a TR multiple."""
+        total_min = fixed_duration + min_iti
+        total_max = fixed_duration + max_iti
+        
+        # All TR multiples in the valid range
+        n_min = int(np.ceil(total_min / TR))
+        n_max = int(np.floor(total_max / TR))
+        
+        if n_min > n_max:
+            raise ValueError(f"No TR multiple in ITI range [{min_iti}, {max_iti}] for fixed duration {fixed_duration}")
+        
+        chosen_n = random.randint(n_min, n_max)
+        return chosen_n * TR - fixed_duration
     
     def create_mem_trials(self):
         """Create memory trials for the session."""
 
+        TR = self.TR if self.TR is not None else 1.6
         # main trials, by block
         self.trials_by_block = []
 
@@ -104,7 +121,10 @@ class MemorySession(PylinkEyetrackerSession):
                 params = stim_row.to_dict()
                 params["block"] = block + 1
 
-                durations = [12.0, random.randint(8, 12)]
+                # Total duration should be in line with TR lengths, so we choose from a set of durations that are multiples of TR. In test mode, we use shorter durations to speed up the experiment.   
+                mem_duration = 12.0 
+                iti = self.jittered_iti(fixed_duration=mem_duration, min_iti=8, max_iti=12, TR=TR)
+                durations = [mem_duration, iti]  # remember phase followed by fixation (ITI)
                 phase_durs = [d*0.1 for d in durations] if self.test_mode else durations
 
                 trial = MemoryTrial(
@@ -124,11 +144,13 @@ class MemorySession(PylinkEyetrackerSession):
         
         The trial should be made once for the start and once for the end of the experiment."""
 
+        TR = self.TR if self.TR is not None else 1.6
+
         self.edge_trials = []
 
         for trial_nr in range(2):  # Create two edge trials, one for the start and one for the end of the experiment
                 
-            phase_durs = [1.6] if self.test_mode else [16.0]
+            phase_durs = [1 * TR] if self.test_mode else [10 * TR]  # Short duration in test mode, longer in actual experiment
 
             trial = MemoryTrial(
                 session=self,
@@ -153,7 +175,7 @@ class MemorySession(PylinkEyetrackerSession):
         if duration is not None:
             core.wait(duration)
         else:
-            
+            self.win.winHandle.activate()  # ensure window has focus
             event.waitKeys(keyList=list(wait_keys or ['space']))
 
     def run(self):
@@ -170,26 +192,11 @@ class MemorySession(PylinkEyetrackerSession):
             # Start recording
             self.start_recording_eyetracker()
 
-        # if self.settings["mri"]["simulate"]:
-        #     self.show_text_screen(
-        #         text="Waiting for scanner...",
-        #         wait_keys=None   # just flash the screen, wait_for_sync() does the actual waiting
-        #     )
-        #     self.wait_for_sync()
-        # else:
-        #     self.show_text_screen(
-        #         text="Waiting for scanner...",
-        #         wait_keys=['t']
-        #     )
-        
         if self.mri_on:
-            # In MRI sessions, instructions are given outside the scanner, so we skip directly to waiting for the scanner.
             self.show_text_screen(
                 text="Waiting for scanner...",
-                wait_keys=None,
-                duration=0.1  # just flash the screen, don't wait for keypress
+                wait_keys=[self.settings['mri'].get('sync', 't')]
             )
-            self.wait_for_sync()  # this does the actual waiting for the trigger
 
         # start_experiment() sets session clock t=0 and logs experiment start
         self.start_experiment()
