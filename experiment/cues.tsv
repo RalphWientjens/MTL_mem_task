@@ -1,5 +1,5 @@
 cue	memory_type	trial_nr
-School	far_away	1
-Park	spatial	2
-Restaurant	emotional_negative	3
-Supermarket	emotional_positive	4
+Primary School	distant - spatial	1
+Campus	recent - spatial	2
+Balcony	distant - emotional	3
+Azalea	recent - emotional	4
