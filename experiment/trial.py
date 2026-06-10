@@ -60,7 +60,7 @@ class MemoryTrial(Trial):
 
             self.cue_text = visual.TextStim(
                 self.session.win, text=self.cue,
-                height=50, color='black', font='Arial'
+                height=80, color='black', font='Arial'
             )
 
             # Reminder beep
